@@ -1,223 +1,131 @@
 # GOBLET — Goner-Buffering Lethality Transcriptomic Pipeline
 
-A computational pipeline for identifying transcriptional buffering candidates
-in cancer, based on correlating Goner loss-of-function (LOF) burden with
-tumour gene expression data.
+GOBLET is an exploratory computational pipeline for asking whether tumour gene
+expression co-varies with the burden of predicted loss-of-function (LOF)
+variants in an operational set of putative loss-intolerant genes (Goners).
+Candidate expression associations can subsequently be filtered using curated
+synthetic-lethal relationships.
 
-## Overview
+## Scientific status
 
-GOBLET identifies genes whose expression co-varies with the burden of Goner
-LOF mutations across a tumour cohort. Goners are mutations in essential genes
-that are toxic to tumour cells — present at lower-than-expected frequency in
-tumour sequencing data because cells acquiring them are eliminated. When
-tumours do carry such mutations, compensatory transcriptional changes
-(buffering) may allow survival. GOBLET identifies candidate buffering genes
-by correlating Goner LOF burden with expression across TCGA tumour samples,
-then filtering for known synthetic lethal (SL) pairs.
+The proof-of-concept analysis uses pancreatic adenocarcinoma (TCGA-PAAD). It
+aligns mutation and RNA-expression data for 165 cases and defines each case's
+predictor as the number of distinct candidate Goner genes carrying at least one
+predicted LOF variant.
 
-The proof-of-concept application is TCGA-PAAD (pancreatic adenocarcinoma,
-143 samples), where the top hit is BCAT2 (Spearman ρ = 0.31), a branched-chain
-amino acid transaminase with independent experimental support in PDAC
-(Ericksen et al. 2019; Zhu et al. 2020).
+No expression association passed the prespecified criteria of Spearman
+`rho > 0.3` and Benjamini–Hochberg-adjusted `p < 0.05`. The largest positive
+association was PARD6B (`rho = 0.342`, nominal `p = 6.95e-6`, adjusted
+`p = 0.121`). Excluding the case with the largest mutation and candidate-LOF
+burdens did not produce an FDR-significant result.
+
+BCAT2 and DBT appear in stored output from the legacy exploratory notebook,
+but they are **not supported as GOBLET results by the analysis reported in the
+Discovery Note**. BCAA metabolism remains a biologically motivated hypothesis
+for future testing, not a detected buffering mechanism in this cohort.
+
+GOBLET 1.0 should therefore be understood as an exploratory pipeline and the
+TCGA-PAAD analysis as a proof of computational feasibility. It does not yet
+constitute a validated detector or establish applicability to other cancers.
+
+## Reproducing the reported PAAD analysis
+
+The analysis and deposited outputs supporting manuscript BIOADV-2026-434 are
+in [`bioadv_analysis/`](bioadv_analysis/):
+
+```bash
+python bioadv_analysis/run_paad_analysis.py
+```
+
+The command uses the deposited inputs in `data/` and `goner_list.txt`. It
+normalises raw counts to `log2(CPM + 1)`, tests genes expressed at at least
+1 CPM in at least 20% of the aligned cases, applies Benjamini–Hochberg
+correction, and repeats the screen after excluding the case with the largest
+candidate-LOF burden.
+
+The required Python packages are NumPy, pandas and SciPy. The full legacy
+notebook has additional dependencies listed in `requirements.txt`.
 
 ## Repository structure
 
-\`\`\`
+```text
 goblet/
-├── GonerFull24Feb2026.ipynb   # Main analysis notebook
-├── goner_list.txt             # Common-essential gene list (DepMap 23Q2,
-│                              # Chronos < −0.5 in ≥ 90% of cell lines)
-├── requirements.txt           # Python dependencies
-├── data/
-│   ├── paad_expr_matrix.xlsx  # TCGA-PAAD expression matrix (143 samples)
-│   ├── paad_maaf.xlsx         # TCGA-PAAD mutation annotation flat file
-│   ├── Human_Mouse_Common.csv # Human–mouse orthologue pairs
-│   ├── HSIAO_Cleaned_paired_genes.csv  # Co-essential gene pairs (Hsiao et al.)
-│   └── gene_sl_gene.csv       # Synthetic lethal pairs (SynLethDB)
-└── README.md
-\`\`\`
+├── bioadv_analysis/              # Analysis and outputs reported in the Note
+│   ├── run_paad_analysis.py
+│   ├── gencode.v36.genes.sorted.tsv
+│   └── outputs/
+├── GonerFull24Feb2026.ipynb      # Legacy exploratory notebook; see warning
+├── goner_list.txt                # Deposited 1,526-gene candidate set
+├── requirements.txt              # Legacy notebook dependencies
+└── data/
+    ├── paad_expr_matrix.xlsx     # 60,660 genes × 183 RNA aliquots
+    ├── paad_maaf.xlsx            # TCGA-PAAD somatic-variant table
+    ├── Human_Mouse_Common.csv
+    ├── HSIAO_Cleaned_paired_genes.csv
+    └── gene_sl_gene.csv
+```
 
-## Reproducing the results
+The expression workbook contains 183 aliquots representing 178 cases. The
+reported analysis retains the first deposited aliquot per case and uses the
+165 case identifiers shared with the mutation table.
 
-### Option A — run in Google Colab (easiest)
+## Legacy notebook
 
-The notebook was developed in Google Colab. To run it there:
+[`GonerFull24Feb2026.ipynb`](GonerFull24Feb2026.ipynb) is retained to document
+the development of GOBLET 1.0. Its stored outputs include the earlier BCAT2,
+DBT and BCAA-enrichment results. Those outputs use a different burden
+construction and should not be interpreted as findings of the current
+TCGA-PAAD analysis. The notebook begins with the same warning and directs
+readers to `bioadv_analysis/`.
 
-1. Open [Google Colab](https://colab.research.google.com/)
-2. File → Open notebook → GitHub → \`d3dd/goblet\` → \`GonerFull24Feb2026.ipynb\`
-3. When prompted by \`google.colab.files.upload()\` cells, upload the
-   corresponding files from the \`data/\` directory in this repository
-4. Run all cells in order
+## Inputs
 
-### Option B — run locally in Jupyter
+### Candidate Goner list
 
-The notebook uses \`google.colab.files.upload()\` for file input, which does
-not work outside Colab. To run locally, replace each upload cell with:
+`goner_list.txt` contains the operational candidate set derived from DepMap
+23Q2 Chronos scores: genes with a score below −0.5 in at least 90% of cell
+lines. This pan-cancer threshold may not represent PAAD-specific essentiality.
 
-\`\`\`python
-# Replace: uploaded = cf.upload()
-# With:
-import pandas as pd
-df = pd.read_excel('data/paad_expr_matrix.xlsx', index_col=0)
-\`\`\`
+### Mutation data
 
-Then install dependencies and run:
+Predicted LOF consequences comprise frame-shift insertions/deletions, nonsense
+mutations, splice-site variants, translation-start-site variants and nonstop
+mutations. Multiple variants in the same candidate gene and case count once;
+genes outside the candidate set do not contribute to the burden.
 
-\`\`\`bash
-git clone https://github.com/d3dd/goblet
-cd goblet
-pip install -r requirements.txt
-jupyter notebook GonerFull24Feb2026.ipynb
-\`\`\`
+### Expression data
 
-## Downloading fresh data from primary sources
+The deposited expression workbook contains raw GDC STAR counts. The accompanying
+GENCODE v36 mapping in `bioadv_analysis/` restores gene identifiers and symbols
+in the deposited row order.
 
-If you wish to reproduce the pipeline with updated data, follow these steps:
+### Synthetic-lethal data
 
-### TCGA-PAAD expression matrix (\`paad_expr_matrix.xlsx\`)
-
-1. Go to [cBioPortal](https://www.cbioportal.org/)
-2. Select study: **Pancreatic Adenocarcinoma (TCGA, PanCancer Atlas)**
-   (\`paad_tcga_pan_can_atlas_2018\`)
-3. Download → mRNA expression (RNA-seq V2 RSEM)
-4. Filter samples: retain only those with tumour purity ≥ 0.70
-   (ABSOLUTE estimates available from the TCGA pan-cancer atlas;
-   see Ahn et al. 2021 for rationale)
-5. This yields **143 samples** matching the cohort used in the manuscript
-6. Save as \`paad_expr_matrix.xlsx\` with genes as rows, sample IDs as columns
-
-### TCGA-PAAD mutation annotation flat file (\`paad_maaf.xlsx\`)
-
-1. From the same cBioPortal study, download → Mutations (MAF format)
-2. Filter to non-synonymous somatic mutations only
-3. Save as \`paad_maaf.xlsx\`
-
-### Common-essential gene list (\`goner_list.txt\`)
-
-Already deposited. Derived from DepMap 23Q2 Chronos scores: genes with
-mean Chronos score < −0.5 in ≥ 90% of 1,019 cell lines. To regenerate:
-
-\`\`\`python
-import pandas as pd
-chronos = pd.read_csv('CRISPRGeneEffect.csv', index_col=0)
-essential = (chronos < -0.5).mean() >= 0.90
-goner_list = chronos.columns[essential].tolist()
-\`\`\`
-
-Download \`CRISPRGeneEffect.csv\` from
-[DepMap 23Q2](https://depmap.org/portal/download/all/?releasename=DepMap+Public+23Q2).
-
-### Synthetic lethal pairs (\`gene_sl_gene.csv\`)
-
-Downloaded from [SynLethDB 2.0](https://synlethdb.sist.shanghaitech.edu.cn/).
-Select: human, experimentally validated pairs only.
-
-### Co-essential pairs (\`HSIAO_Cleaned_paired_genes.csv\`)
-
-Derived from Hsiao et al. (2019). See notebook comments for filtering criteria.
-
-### Human–mouse orthologues (\`Human_Mouse_Common.csv\`)
-
-Downloaded from Ensembl BioMart. Homo sapiens → Mus musculus one-to-one
-orthologues, protein-coding genes only.
-
-## Dependencies
-
-\`\`\`
-pandas>=1.5.0
-numpy>=1.23.0
-scipy>=1.9.0
-openpyxl>=3.0.10
-matplotlib>=3.6.0
-seaborn>=0.12.0
-statsmodels>=0.13.0
-gseapy>=1.0.4
-biorosetta>=0.3.0
-requests>=2.28.0
-jupyter>=1.0.0
-\`\`\`
-
-Install with:
-
-\`\`\`bash
-pip install -r requirements.txt
-\`\`\`
-
-Note: \`google.colab\` is pre-installed in Colab and should not be pip-installed.
-
-## Tumour purity filtering
-
-Following Ahn, Grimes & Datta (2021, *Frontiers in Genetics*), samples with
-tumour purity below 0.70 are excluded before expression correlation to avoid
-confounding by stromal/immune cell transcription. ABSOLUTE purity estimates
-for TCGA-PAAD are available from the TCGA pan-cancer atlas supplementary data.
-
-## PAAD-specific essentiality threshold
-
-The default \`goner_list.txt\` uses a pan-cancer threshold (Chronos < −0.5 in
-≥ 90% of all 1,019 DepMap cell lines). A PAAD-specific sensitivity analysis
-using only PAAD-lineage cell lines is planned. The PAAD cell lines can be
-identified from the DepMap 23Q2 model metadata
-(\`Model.csv\`, \`OncotreeLineage == 'Pancreas'\`):
-
-\`\`\`python
-import pandas as pd
-
-# Load DepMap 23Q2 model metadata
-models = pd.read_csv('Model.csv', index_col=0)
-paad_lines = models[models['OncotreeLineage'] == 'Pancreas'].index
-
-# Load Chronos scores and subset to PAAD lines
-chronos = pd.read_csv('CRISPRGeneEffect.csv', index_col=0)
-chronos_paad = chronos.loc[chronos.index.isin(paad_lines)]
-
-# Apply threshold: essential in ≥ 80% of PAAD lines
-# (threshold relaxed from 90% due to smaller n)
-essential_paad = (chronos_paad < -0.5).mean() >= 0.80
-goner_list_paad = chronos_paad.columns[essential_paad].tolist()
-\`\`\`
+Curated relationships in `data/gene_sl_gene.csv` are used only after an
+expression association passes the statistical screen. No expression
+association passed that screen in the reported PAAD analysis.
 
 ## Limitations
 
-**Pan-cancer essentiality threshold:** The current Goner list uses a pan-cancer
-DepMap threshold. This may include genes that are not essential in PAAD
-specifically, or miss PAAD-specific dependencies. A sensitivity analysis
-comparing pan-cancer vs PAAD-specific thresholds is in progress.
+The predictor is sparse and uneven: 137 of 165 cases have burden zero, whereas
+one hypermutated case contributes 93 of the 126 candidate-gene/case LOF
+observations. The pan-cancer essentiality threshold may miss PAAD-specific
+dependencies. Future methods should account for total mutation burden, driver
+context, tumour purity and copy number, and should be validated in independent
+cohorts.
 
-**Stromal contamination:** TCGA bulk RNA-seq includes stromal and immune cell
-transcription. Tumour purity filtering (≥ 0.70, see above) partially addresses
-this. Note that for the BCAT2 finding specifically, Zhu et al. (2020) show
-that stromal BCAT2 (in cancer-associated fibroblasts) has no effect on PDAC
-growth — only tumour-cell BCAT2 matters — which supports the interpretation
-of the GOBLET signal as tumour-cell-intrinsic.
-
-**Causal interpretation:** The pipeline identifies correlation between Goner
-LOF burden and gene expression — consistent with transcriptional buffering
-but not proof of causation. Candidate genes require independent experimental
-validation (see Ericksen 2019 for BCAT2).
-
-## Key results
-
-| Gene  | Pathway              | Spearman ρ | FDR-adjusted p | Rank |
-|-------|----------------------|-----------|----------------|------|
-| BCAT2 | BCAA catabolism      | 0.31      | < 0.05         | 1 (BCAA) |
-| DBT   | BCAA catabolism (E2) | 0.30      | < 0.05         | 2 (BCAA) |
-
-The BCAA catabolism pathway (GO:0009083) is the strongest enriched GO term
-among the top 25 candidates (adjusted p = 0.0438, 4 enriched terms).
-BCAT2 upregulation in PDAC is independently supported by:
-- Ericksen et al. (2019): BCAT2 knockdown selectively impairs PDAC but not
-  normal pancreatic cell proliferation
-- Zhu et al. (2020): tumour-cell BCAT2 (not stromal BCAT2) drives BCAA
-  dependency in PDAC
+A null result from this cross-sectional burden–expression test does not exclude
+alteration-specific or non-transcriptional buffering, which may fall outside
+the tested signal or be obscured by sparse and uneven burden, hypermutation or
+other confounding factors.
 
 ## Citation
 
 If you use GOBLET, please cite:
 
 > Boman M et al. (2026). Transcriptomic Buffering Detection: A Computational
-> Approach to Identifying Essential Gene Dependencies in Cancer.
-> *Bioinformatics Advances*, BIOADV-2026-298 (under revision).
+> Approach to Identifying Essential Gene Dependencies in Pancreatic Cancer.
+> *Bioinformatics Advances*, BIOADV-2026-434 (under revision).
 
 ## Licence
 
