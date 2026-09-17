@@ -1,0 +1,37 @@
+{
+  "expression_rows": 60660,
+  "expression_aliquots": 183,
+  "unique_expression_cases": 178,
+  "maf_rows": 24849,
+  "lof_rows": 1872,
+  "unique_lof_genes": 1599,
+  "goner_list_size": 1526,
+  "observed_candidate_genes": 126,
+  "candidate_gene_case_lof_observations": 126,
+  "aligned_cases": 165,
+  "tested_expression_features": 17437,
+  "goner_burden_distribution": {
+    "0": 137,
+    "1": 23,
+    "2": 2,
+    "3": 2,
+    "93": 1
+  },
+  "top_goner_sample": "TCGA-IB-7651",
+  "top_goner_burden": 93,
+  "top_sample_total_maf_variants": 17551,
+  "median_total_maf_variants": 39.0,
+  "significant_features": 0,
+  "sl_overlap_features": 0,
+  "leave_top_out_significant_features": 0,
+  "leave_top_out_sl_overlap_features": 0,
+  "largest_positive_association": {
+    "ensembl_gene_id": "ENSG00000124171.9",
+    "gene_symbol": "PARD6B",
+    "rho": 0.3419361923091053,
+    "p_value": 6.953552482509735e-06,
+    "p_adjusted": 0.12124909463752225
+  },
+  "significant_genes": [],
+  "leave_top_out_significant_genes": []
+}
